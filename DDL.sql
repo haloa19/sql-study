@@ -1,3 +1,8 @@
+/*
+ * DDL (DATA DEFINITION LANGUAGE)
+ * 데이터 정의어: CREATE, DROP, ALTER, RENAME
+ * 직접 DB 테이블에 관여하므로 명령어 즉시 AUTO COMMIT
+ * */
 /* 1. 테이블 생성 */
 /* 1-1. PLAYER 테이블 생성 */
 CREATE TABLE PLAYER (
@@ -108,5 +113,5 @@ ALTER TABLE PLAYER DROP CONSTRAINT PLAYER_FK;
 DROP TABLE TEAM;
 
 /* 4-9. TRUNCATE TABLE */
-/* 테이블 구조는 그대로, 모든 행만 제거, DELETE보다 부하가 적음 */
+/* 테이블 구조는 그대로, 모든 행만 제거, DELETE보다 부하가 적음, 로그 남기지x */
 TRUNCATE TABLE TEAM;

@@ -96,3 +96,43 @@ UNION
 SELECT *
  FROM DEPT D
 	RIGHT OUTER JOIN DEPT_DEPT DD ON D.DEPTNO = DD.DEPTNO;
+
+
+-- 7. 계층형 질의
+-- 설명: 동일 테이블에 계층적으로 상/하위 데이터가 포함된 데이터
+-- 1) ORACLE
+SELECT CONNECT_BY_ROOT E.EMPNO AS '루트사원', -- 현재 전개할 데이터의 루트 데이터 표시
+	   SYS_CONNECT_BY_PATH(E.EMPNO, '/') AS '경로', -- 루트 ~ 현재 전개할 데이터까지의 경로 표시
+	   E.ENAME, 
+	   E.MGR
+FROM EMP E
+	START WITH E.MGR IS NULL -- 시작 데이터 지정
+	CONNECT BY PRIOR E.EMPNO = E.MGR -- 다음 전계될 자식 데이터 (자식 -> 부모: 순방향 / 부모 -> 자식: 역방향)
+	
+	
+-- 2) SQL Server
+-- WITH절의 CTE 쿼리 사용 -> CTE쿼리는 엥커 멤버 + 재귀 멤버 구성
+WITH T_EMP_ANCHOR AS (-- 첫번째 호출, 입력용 TI
+					  SELECT E.EMPNO, E.MGR, 0 AS LEVEL, CONVERT(VARCHAR(1000), E.EMPNO) AS SORT
+					  FROM EMP E
+					  WHERE MGR IS NULL
+					  UNION ALL 
+					  -- TI+1 출력용
+					  SELECT R.EMPNO, R.MGR, A.LEVEL + 1, CONVERT(VARCHAR(1000), A.SORT + '/' + R.EMPNO) AS SORT
+					  FROM T_EMP_ANCHOR A, EMP R
+					  WHERE A.EMPNO = R.MGR)
+SELECT LEVEL, REPLICATE('', LEVEL) + EMPNO AS EMPNO, MGR, SORT
+FROM T_EMP_ANCHOR 
+ORDER BY SORT GO;
+
+
+-- 8. 셀프 조인
+-- 설명: 동일 테이블 사이의 조인
+-- 조건: 사원의 상위, 차상위 관리자를 한줄에 출력하라
+SELECT E1.EMPNO AS '사원번호',    E1.ENAME AS '사원이름', 
+	   E1.MGR AS '상위관리자 번호', E2.ENAME AS '상위관리자 이름',
+	   E2.MGR AS '차상위관리자 번호'
+FROM EMP E1
+	LEFT OUTER JOIN EMP E2
+		ON E1.MGR = E2.EMPNO
+ORDER BY E1.EMPNO;

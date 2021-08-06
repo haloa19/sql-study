@@ -118,36 +118,44 @@ FROM SCHEDULE;
 
 
 -- 6. Trigger 생성과 활용
--- 설명: DML 문이 수행될 때, DB에서 자동으로 동작하도록 작성된 프로그램
+-- 설명: DML 문이 수행될 때, DB에서 자동으로 동작하도록 작성된 프로그램, 커밋과 롤백 실행 불가
 -- 대상: 테이블, 뷰, DB 작업
 -- 문제: ORDER_LIST에 주문 정보 입력 시, 
 --      주문 정보의 주문 일자와 주문 상품을 기준으로 판매 집계 테이블에 해당 주문 일자의 주문 상품 레코드가 존재하면 판매 수량 + 판매 금액, 아니면 새로운 레코드 입력
 -- 1) ORACLE
-CREATE OR REPLACE Trigger SUMMARY_SALES
-AFTER INSERT ON ORDER_LIST FOR EACH ROW DECLARE -- 각 행마다 트리거 적용
-o_date ORDER_LIST.order_date % TYPE;
-o_prod ORDER_LIST.product % TYPE;
+CREATE OR REPLACE Trigger SUMMARY_SALES -- 트리거 선언
+AFTER INSERT ON ORDER_LIST FOR EACH ROW DECLARE -- 레코드 입력 후, 각 행마다 트리거 적용
+o_date ORDER_LIST.order_date%TYPE;
+o_prod ORDER_LIST.product%TYPE;
 BEGIN
 	o_date := :NEW.order_date; -- ':NEW' 는 신규로 입력한 정보를 가지고 있는 구조체
 	o_prod := :NEW.product;
 	UPDATE SALES_PER_DATE SET qty = qty + :NEW.qty, amount = amount + :NEW.amount
 	WHERE sale_date = o_date AND product = o_prod;
-	if SQL % NOTFOUND then INSERT INTO SALES_PER_DATE VALUES(o_date, o_proda, :NEW.qty, :NEW.amount);
+	if SQL%NOTFOUND then INSERT INTO SALES_PER_DATE VALUES(o_date, o_proda, :NEW.qty, :NEW.amount);
 	end if;
-END
+END;/
+
+/* 실행 */
+INSERT INTO ORDER_LIST VALUES('20200101', 'MONOPACK', 10, 30000);
+SELECT * FROM ORDER_LIST; -- 전체 데이터
+SELECT * FROM SALES_PER_DATE; -- 마지막에 트리거를 통해 넣은 데이터
 
 -- 2) SQL Server
-CREATE Trigger dbo.SUMMARY_SALES 
-ON ORDER_LIST AFTER INSERT AS DECLARE
+CREATE Trigger dbo.SUMMARY_SALES -- 트리거 선언
+ON ORDER_LIST AFTER INSERT AS DECLARE -- 레코드 입력 후, 트리거 발생
 	@o_date DATETIME,
 	@o_prod INT,
 	@qty int,
 	@amount int
 BEGIN 
 	SELECT @o_date = order_date, @o_prod = product, @qty = qty, @amount = amount
-	FROM inserted 
+	FROM inserted -- 신규 입력된 레코드 정보 존재하는 구조체
 	UPDATE SALES_PER_DATE SET qty = qty + @qty, amount = amount + @amount
 	WHERE sale_date = @o_date AND product = @o_prod;
 		IF @@ROOWCOUNT = 0
 		INSERT INTO SALES_PER_DATE VALUES(@o_date, @o_prod, @qty, @amount)
 END
+
+/* 실행 */
+INSERT INTO ORDER_LIST VALUES('20200101', 'MONOPACK', 10, 30000);
